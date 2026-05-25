@@ -11,6 +11,7 @@ import {
   deleteDoc, // NEW
   doc, // NEW
   updateDoc, // NEW
+  enableIndexedDbPersistence,
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import {
   getAuth,
@@ -33,6 +34,21 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+
+// NEW: Enable offline local storage.
+// This forces the app to load from device storage first, drastically reducing Firestore reads!
+enableIndexedDbPersistence(db).catch((err) => {
+  if (err.code == "failed-precondition") {
+    console.log(
+      "Multiple tabs open, persistence can only be enabled in one tab at a a time.",
+    );
+  } else if (err.code == "unimplemented") {
+    console.log(
+      "The current browser does not support all of the features required to enable persistence.",
+    );
+  }
+});
+
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
@@ -347,7 +363,6 @@ saveBtn.addEventListener("click", async () => {
   if (!topic || editor.innerText.trim() === "")
     return alert("Please ensure Topic and Note Body spaces are populated.");
 
-  // Gather all selected times into an array
   const reminderTimes = Array.from(
     document.querySelectorAll(".reminder-time-input"),
   ).map((input) => input.value);
@@ -357,10 +372,10 @@ saveBtn.addEventListener("click", async () => {
     category: activeCategory,
     topic: topic,
     content: content,
-    isDone: false, // New parameter for the "Done" feature
+    isDone: false,
     createdAt: serverTimestamp(),
     scheduling: {
-      times: reminderTimes, // Saves the array of 1 to 5 times
+      times: reminderTimes,
       type: durationSelect.value,
       repeatDays: [...selectedDays],
       startDate: document.getElementById("start-date").value,
@@ -375,7 +390,8 @@ saveBtn.addEventListener("click", async () => {
     await addDoc(collection(db, "notes"), payload);
     editor.innerHTML = "";
     topicInput.value = "";
-    alert("Saved & Synced!");
+    // Removed the "Saved & Synced!" alert for a smoother UI experience.
+    // The onSnapshot listener will automatically place the new note in the grid instantly.
   } catch (err) {
     console.error("Write execution dropped: ", err);
   }
