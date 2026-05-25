@@ -212,21 +212,26 @@ onAuthStateChanged(auth, (user) => {
   onMessage(messaging, (payload) => {
     console.log("Message received while app is open: ", payload);
 
-    // Force the browser to show the notification visual even when app is open
     if ("Notification" in window && Notification.permission === "granted") {
-      navigator.serviceWorker.ready.then((registration) => {
-        registration.showNotification(
-          payload.notification.title || "DN Notes Alarm",
-          {
-            body:
-              payload.notification.body ||
-              "It is time! Open the app to view your task.",
-            icon: "icons/icon-192.png",
-            vibrate: [300, 100, 300, 100, 300],
-            requireInteraction: true,
-          },
-        );
-      });
+      const title = payload.notification.title || "DN Notes Alarm";
+      const options = {
+        body:
+          payload.notification.body ||
+          "It is time! Open the app to view your task.",
+        icon: "icons/icon-192.png",
+        vibrate: [300, 100, 300, 100, 300],
+        requireInteraction: true,
+      };
+
+      try {
+        // Forces Desktop PCs (Windows/Mac) to show a visual popup while app is open
+        new Notification(title, options);
+      } catch (err) {
+        // Fallback for Android/Mobile which strictly requires the Service Worker
+        navigator.serviceWorker.ready.then((registration) => {
+          registration.showNotification(title, options);
+        });
+      }
     }
   });
 });
@@ -688,17 +693,25 @@ function triggerAlarm(note) {
     }, 5000);
   }
 
-  // 2. Trigger OS Level Push Notification ... (Keep your existing notification code below this)
+  // 2. Trigger OS Level Push Notification
   if ("Notification" in window && Notification.permission === "granted") {
-    // ... your existing code ...
-    navigator.serviceWorker.ready.then((registration) => {
-      registration.showNotification(`⏰ DN Notes: ${note.topic}`, {
-        body: "It is time! Click to view your task.",
-        icon: "icons/icon-192.png",
-        vibrate: [300, 100, 300, 100, 300], // Vibrates phone
-        requireInteraction: true, // Forces notification to stay on screen until dismissed
-        tag: note.id, // Prevents spamming multiple notifications for the same task
+    const title = `⏰ DN Notes: ${note.topic}`;
+    const options = {
+      body: "It is time! Click to view your task.",
+      icon: "icons/icon-192.png",
+      vibrate: [300, 100, 300, 100, 300], // Vibrates phone
+      requireInteraction: true, // Forces notification to stay on screen until dismissed
+      tag: note.id, // Prevents spamming multiple notifications for the same task
+    };
+
+    try {
+      // Forces Desktop PCs (Windows/Mac) to show a visual popup while app is open
+      new Notification(title, options);
+    } catch (err) {
+      // Fallback for Android/Mobile which strictly requires the Service Worker
+      navigator.serviceWorker.ready.then((registration) => {
+        registration.showNotification(title, options);
       });
-    });
+    }
   }
 }
