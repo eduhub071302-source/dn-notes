@@ -173,8 +173,7 @@ onAuthStateChanged(auth, (user) => {
         console.log("Notification permission granted.");
 
         // 1. Explicitly register the single main service worker using the GitHub Pages path
-        const swRegistration =
-          await navigator.serviceWorker.register("/dn-notes/sw.js");
+        const swRegistration = await navigator.serviceWorker.register("sw.js");
 
         // 2. Pass the registration directly into the getToken function
         const currentToken = await getToken(messaging, {
