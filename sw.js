@@ -22,3 +22,22 @@ self.addEventListener("fetch", (event) => {
     }),
   );
 });
+
+// --- NEW: Handle Notification Clicks ---
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close(); // Close the notification
+
+  // Check if the app is already open in a tab, and focus it. If not, open a new tab.
+  event.waitUntil(
+    clients.matchAll({ type: "window" }).then((windowClients) => {
+      for (let client of windowClients) {
+        if (client.url.includes("/") && "focus" in client) {
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow("/");
+      }
+    }),
+  );
+});
