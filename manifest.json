@@ -1,7 +1,7 @@
 {
   "name": "DN Notes",
   "short_name": "DN Notes",
-  "start_url": "/index.html",
+  "start_url": ".",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#4A90E2",
