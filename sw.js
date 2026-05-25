@@ -1,10 +1,10 @@
-const CACHE_NAME = "dn-notes-cache-v1";
+const CACHE_NAME = "dn-notes-cache-v2"; // Bumped version
 const urlsToCache = [
-  "/",
-  "/index.html",
-  "/style.css",
-  "/app.js",
-  "/manifest.json",
+  "./",
+  "./index.html",
+  "./style.css",
+  "./app.js",
+  "./manifest.json",
 ];
 
 self.addEventListener("install", (event) => {
