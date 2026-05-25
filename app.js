@@ -172,18 +172,20 @@ onAuthStateChanged(auth, (user) => {
       if (permission === "granted") {
         console.log("Notification permission granted.");
 
-        // 1. Register the service worker with an explicit relative path
+        // Inside your requestPushPermissions() function...
+
+        // 1. Register the service worker with an explicit GitHub Pages path and scope
         const swRegistration = await navigator.serviceWorker.register(
-          "./firebase-messaging-sw.js",
+          "/dn-notes/firebase-messaging-sw.js",
+          { scope: "/dn-notes/" },
         );
 
-        // Optional but recommended: Wait for the newly registered worker to be ready
         await navigator.serviceWorker.ready;
 
         // 2. Pass the registration directly into the getToken function
         const currentToken = await getToken(messaging, {
           vapidKey: VAPID_KEY,
-          serviceWorkerRegistration: swRegistration, // Passes the correctly scoped worker
+          serviceWorkerRegistration: swRegistration,
         });
 
         if (currentToken) {
@@ -206,10 +208,26 @@ onAuthStateChanged(auth, (user) => {
   // Call it immediately after logging in so it saves to the database
   requestPushPermissions();
 
-  // Optional: Handle messages when the app is currently open on the screen
+  // Handle messages when the app is currently open on the screen
   onMessage(messaging, (payload) => {
     console.log("Message received while app is open: ", payload);
-    // You can show a custom UI popup here if you want
+
+    // Force the browser to show the notification visual even when app is open
+    if ("Notification" in window && Notification.permission === "granted") {
+      navigator.serviceWorker.ready.then((registration) => {
+        registration.showNotification(
+          payload.notification.title || "DN Notes Alarm",
+          {
+            body:
+              payload.notification.body ||
+              "It is time! Open the app to view your task.",
+            icon: "icons/icon-192.png",
+            vibrate: [300, 100, 300, 100, 300],
+            requireInteraction: true,
+          },
+        );
+      });
+    }
   });
 });
 
@@ -650,20 +668,29 @@ function checkAlarms() {
 }
 
 function triggerAlarm(note) {
-  // 1. Play the audio sound
+  // 1. Play the audio sound for exactly 5 seconds
   const alarmSound = document.getElementById("alarm-sound");
   if (alarmSound) {
     alarmSound.currentTime = 0;
-    // Note: Browsers require the user to have clicked somewhere on the page before allowing audio to play.
+    alarmSound.loop = true; // Force the short clip to loop
+
     alarmSound
       .play()
       .catch((e) =>
         console.warn("Audio blocked by browser auto-play policy:", e),
       );
+
+    // Cut off the sound after 5000 milliseconds (5 seconds)
+    setTimeout(() => {
+      alarmSound.pause();
+      alarmSound.currentTime = 0;
+      alarmSound.loop = false;
+    }, 5000);
   }
 
-  // 2. Trigger OS Level Push Notification (Uses Service Worker for persistence)
+  // 2. Trigger OS Level Push Notification ... (Keep your existing notification code below this)
   if ("Notification" in window && Notification.permission === "granted") {
+    // ... your existing code ...
     navigator.serviceWorker.ready.then((registration) => {
       registration.showNotification(`⏰ DN Notes: ${note.topic}`, {
         body: "It is time! Click to view your task.",
