@@ -12,6 +12,7 @@ import {
   doc, // NEW
   updateDoc, // NEW
   enableIndexedDbPersistence,
+  setDoc,
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import {
   getAuth,
@@ -22,6 +23,12 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+
+import {
+  getMessaging,
+  getToken,
+  onMessage,
+} from "https://www.gstatic.com/firebasejs/10.8.1/firebase-messaging.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDrIpkCiUtGJMoIso8MIfo1YoFSH3FCH7A",
@@ -49,6 +56,19 @@ enableIndexedDbPersistence(db).catch((err) => {
   }
 });
 
+// Request Notification Permission on load
+if (
+  "Notification" in window &&
+  Notification.permission !== "granted" &&
+  Notification.permission !== "denied"
+) {
+  Notification.requestPermission().then((permission) => {
+    if (permission === "granted") {
+      console.log("OS Notifications enabled!");
+    }
+  });
+}
+
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
@@ -57,6 +77,10 @@ let activeCategory = "daily-habits";
 let selectedDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 let unsubscribeNotes = null;
 let activeModalNoteId = null; // Tracks the currently opened note ID for Delete/Done ops
+let alarmNotes = [];
+let unsubscribeAlarms = null;
+let triggeredAlarms = new Set();
+let alarmInterval = null;
 
 // Auth UI bindings
 const authForms = document.getElementById("auth-forms");
@@ -122,15 +146,65 @@ onAuthStateChanged(auth, (user) => {
     userNameText.innerText = user.displayName
       ? user.displayName.split(" ")[0]
       : user.email.split("@")[0];
+
     streamUserNotes();
+    startAlarmEngine(); // NEW: Start the global alarm checker
   } else {
     currentUser = null;
     userProfileView.classList.add("hidden");
     authForms.classList.remove("hidden");
     document.getElementById("notes-grid").innerHTML =
       '<p style="padding:15px; color:#64748b;">Please login to load your cloud synced notes.</p>';
+
     if (unsubscribeNotes) unsubscribeNotes();
+
+    // NEW: Shut down alarms on logout
+    if (unsubscribeAlarms) unsubscribeAlarms();
+    if (alarmInterval) clearInterval(alarmInterval);
   }
+
+  // Initialize Messaging
+  const messaging = getMessaging(app);
+
+  // Replace this with the key you copied in Step 1!
+  const VAPID_KEY =
+    "BPKM5Z8YirkyB4OORXKQiRL2ukLjivdyydm9pzVFcEmkGmnJ8of_y4HxYB6DtmEKxBbp4ao2s2M0IpHkCFcNNjQ";
+
+  async function requestPushPermissions() {
+    try {
+      console.log("Requesting notification permission...");
+      const permission = await Notification.requestPermission();
+
+      if (permission === "granted") {
+        console.log("Notification permission granted.");
+        const currentToken = await getToken(messaging, { vapidKey: VAPID_KEY });
+
+        if (currentToken) {
+          console.log("SUCCESS! Your Device Token is:", currentToken);
+          // NEW: Save token to Firestore so the Cloud Function knows where to send the alarm
+          const userRef = doc(db, "users", currentUser.uid);
+          await setDoc(userRef, { fcmToken: currentToken }, { merge: true });
+        } else {
+          console.log(
+            "No registration token available. Request permission to generate one.",
+          );
+        }
+      } else {
+        console.log("Do not have permission to send notifications.");
+      }
+    } catch (err) {
+      console.error("An error occurred while retrieving token.", err);
+    }
+  }
+
+  // Call it immediately after logging in so it saves to the database
+  requestPushPermissions();
+
+  // Optional: Handle messages when the app is currently open on the screen
+  onMessage(messaging, (payload) => {
+    console.log("Message received while app is open: ", payload);
+    // You can show a custom UI popup here if you want
+  });
 });
 
 loginBtn.addEventListener("click", () => {
@@ -481,3 +555,117 @@ markDoneBtn.addEventListener("click", async () => {
     alert("Failed to update status: " + err.message);
   }
 });
+
+/* --- Global Background Alarm Engine --- */
+function startAlarmEngine() {
+  if (!currentUser) return;
+  if (unsubscribeAlarms) unsubscribeAlarms();
+  if (alarmInterval) clearInterval(alarmInterval);
+
+  // Stream ALL notes for the user, regardless of which category tab is active
+  const allNotesQuery = query(
+    collection(db, "notes"),
+    where("uid", "==", currentUser.uid),
+  );
+
+  unsubscribeAlarms = onSnapshot(allNotesQuery, (snapshot) => {
+    alarmNotes = [];
+    snapshot.forEach((docSnap) => {
+      alarmNotes.push({ id: docSnap.id, ...docSnap.data() });
+    });
+  });
+
+  // Check the clock every 30 seconds
+  alarmInterval = setInterval(checkAlarms, 30000);
+}
+
+function checkAlarms() {
+  if (alarmNotes.length === 0) return;
+
+  const now = new Date();
+  const currentDay = now.toLocaleDateString("en-US", { weekday: "short" }); // e.g., "Mon"
+  const currentDateStr = now.toLocaleDateString("en-CA"); // Gets local "YYYY-MM-DD" accurately
+  const currentMonthDay = currentDateStr.substring(5); // "MM-DD"
+
+  const hours = String(now.getHours()).padStart(2, "0");
+  const minutes = String(now.getMinutes()).padStart(2, "0");
+  const currentTimeStr = `${hours}:${minutes}`;
+
+  alarmNotes.forEach((note) => {
+    // Skip if note is done, or has no scheduling data
+    if (
+      note.isDone ||
+      !note.scheduling ||
+      !note.scheduling.times ||
+      note.scheduling.times.length === 0
+    )
+      return;
+
+    let dateMatches = false;
+    const cat = note.category;
+    const sched = note.scheduling;
+
+    // Evaluate Date Matches based on category & duration type
+    if (cat === "birthdays") {
+      if (sched.birthdayDate && sched.birthdayDate.endsWith(currentMonthDay))
+        dateMatches = true;
+    } else if (cat === "special-days") {
+      if (sched.holidayDate === currentDateStr) dateMatches = true;
+    } else {
+      if (
+        sched.type === "specific-date" &&
+        sched.singleDate === currentDateStr
+      ) {
+        dateMatches = true;
+      } else if (
+        sched.type === "range" &&
+        sched.startDate <= currentDateStr &&
+        sched.endDate >= currentDateStr
+      ) {
+        if (sched.repeatDays && sched.repeatDays.includes(currentDay))
+          dateMatches = true;
+      } else if (sched.type === "lifetime") {
+        if (sched.repeatDays && sched.repeatDays.includes(currentDay))
+          dateMatches = true;
+      }
+    }
+
+    // If today is the day, and the time matches now
+    if (dateMatches && sched.times.includes(currentTimeStr)) {
+      const alarmKey = `${note.id}-${currentTimeStr}-${currentDateStr}`;
+
+      // Ensure it only rings once per minute per note
+      if (!triggeredAlarms.has(alarmKey)) {
+        triggerAlarm(note);
+        triggeredAlarms.add(alarmKey);
+      }
+    }
+  });
+}
+
+function triggerAlarm(note) {
+  // 1. Play the audio sound
+  const alarmSound = document.getElementById("alarm-sound");
+  if (alarmSound) {
+    alarmSound.currentTime = 0;
+    // Note: Browsers require the user to have clicked somewhere on the page before allowing audio to play.
+    alarmSound
+      .play()
+      .catch((e) =>
+        console.warn("Audio blocked by browser auto-play policy:", e),
+      );
+  }
+
+  // 2. Trigger OS Level Push Notification (Uses Service Worker for persistence)
+  if ("Notification" in window && Notification.permission === "granted") {
+    navigator.serviceWorker.ready.then((registration) => {
+      registration.showNotification(`⏰ DN Notes: ${note.topic}`, {
+        body: "It is time! Click to view your task.",
+        icon: "icons/icon-192.png",
+        vibrate: [300, 100, 300, 100, 300], // Vibrates phone
+        requireInteraction: true, // Forces notification to stay on screen until dismissed
+        tag: note.id, // Prevents spamming multiple notifications for the same task
+      });
+    });
+  }
+}
