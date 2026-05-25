@@ -41,7 +41,6 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-const app = initializeApp(firebaseConfig);
 
 // NEW: Enable offline local storage using the modern v10 method.
 // This forces the app to load from device storage first, drastically reducing Firestore reads!
