@@ -34,11 +34,11 @@ messaging.onBackgroundMessage((payload) => {
 // 4. Your existing Cache & App Shell Logic
 const CACHE_NAME = "dn-notes-cache-v4";
 const urlsToCache = [
-  "/dn-notes/",
-  "/dn-notes/index.html",
-  "/dn-notes/style.css",
-  "/dn-notes/app.js",
-  "/dn-notes/manifest.json",
+  "./",
+  "./index.html",
+  "./style.css",
+  "./app.js",
+  "./manifest.json",
 ];
 
 self.addEventListener("install", (event) => {
