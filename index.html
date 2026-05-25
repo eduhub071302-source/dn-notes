@@ -174,7 +174,31 @@
             <option value="Georgia">Georgia</option>
             <option value="Trebuchet MS">Clean</option>
           </select>
-          <input type="color" id="font-color" value="#2c3e50" />
+
+          <div
+            style="
+              display: flex;
+              gap: 5px;
+              align-items: center;
+              border-right: 1px solid var(--border-color);
+              padding-right: 10px;
+              margin-right: 5px;
+            "
+          >
+            <input
+              type="color"
+              id="font-color"
+              value="#2c3e50"
+              title="Choose Font Color"
+            />
+            <button
+              id="apply-color-btn"
+              class="secondary-btn"
+              style="padding: 3px 8px; font-size: 11px"
+            >
+              Save Color
+            </button>
+          </div>
 
           <button id="btn-bold"><b>B</b></button>
           <button id="btn-italic"><i>I</i></button>
