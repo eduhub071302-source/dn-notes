@@ -40,6 +40,8 @@ body {
   flex-direction: column;
   border-right: 1px solid var(--border-color);
   box-shadow: 2px 0 15px rgba(0, 0, 0, 0.5);
+  overflow-y: auto; /* <-- ADD THIS: Allows vertical scrolling on mobile */
+  scrollbar-width: thin; /* Optional: keeps the scrollbar slim */
 }
 
 #sidebar:not(.open) {
@@ -223,6 +225,14 @@ input[type="time"]:focus {
 }
 .toolbar button:hover {
   background: var(--border-color);
+}
+
+/* Highlights the text editor buttons when a style is active */
+.toolbar button.active-tool {
+  background: var(--primary);
+  color: #0b0f19;
+  border-color: var(--primary);
+  box-shadow: 0 0 5px rgba(0, 229, 255, 0.4);
 }
 
 #editor {
