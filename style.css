@@ -1,0 +1,355 @@
+:root {
+  /* Deep dark backgrounds for the neon to pop */
+  --bg-color: #0b0f19;
+  --sidebar-bg: #111827;
+  --card-bg: #1f2937;
+
+  /* Text colors */
+  --sidebar-text: #f8fafc;
+  --text-main: #e2e8f0;
+
+  /* Neon Accent Colors */
+  --primary: #00e5ff; /* Neon Cyan */
+  --primary-hover: #00ffff;
+  --primary-glow: 0 0 10px var(--primary), 0 0 20px rgba(0, 229, 255, 0.4);
+
+  /* Structural Borders */
+  --border-color: #374151;
+}
+
+body {
+  margin: 0;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+  display: flex;
+  height: 100vh;
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  overflow: hidden;
+}
+
+/* Sidebar Modifications */
+#sidebar {
+  width: 280px;
+  background-color: var(--sidebar-bg);
+  color: var(--sidebar-text);
+  transition: width 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border-color);
+  box-shadow: 2px 0 15px rgba(0, 0, 0, 0.5);
+}
+
+#sidebar:not(.open) {
+  width: 70px;
+}
+#sidebar:not(.open) .brand-name,
+#sidebar:not(.open) ul span,
+#sidebar:not(.open) .auth-container span,
+#sidebar:not(.open) .auth-container button {
+  display: none;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+}
+
+#toggle-btn {
+  background: none;
+  border: none;
+  color: var(--primary);
+  font-size: 24px;
+  cursor: pointer;
+  padding: 10px;
+  text-shadow: 0 0 8px var(--primary);
+}
+
+/* Auth Area Styling */
+.auth-container {
+  padding: 15px;
+  border-bottom: 1px solid var(--border-color);
+}
+.google-btn {
+  width: 100%;
+  padding: 10px;
+  background: #ea4335;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+}
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.user-profile img {
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  border: 2px solid var(--primary);
+}
+.user-profile button {
+  background: none;
+  border: 1px solid #ef4444;
+  color: #ef4444;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+#sidebar ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+#sidebar li {
+  padding: 15px 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  transition: all 0.3s ease;
+}
+#sidebar li.active {
+  background-color: var(--card-bg);
+  color: var(--primary);
+  box-shadow:
+    inset 4px 0 0 var(--primary),
+    inset 0 0 20px rgba(0, 229, 255, 0.1);
+  text-shadow: 0 0 5px var(--primary);
+}
+#sidebar li:hover:not(.active) {
+  background-color: var(--border-color);
+}
+
+/* Main Content Workspace */
+main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  overflow-y: auto;
+}
+.editor-container {
+  background: var(--card-bg);
+  border-radius: 12px;
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-color);
+}
+
+/* Professional Scheduling Topbar */
+.scheduling-bar {
+  background: var(--sidebar-bg);
+  padding: 15px;
+  border-radius: 12px 12px 0 0;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.schedule-row {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* Dropdowns and Inputs in Dark Mode */
+select,
+input[type="date"],
+input[type="time"] {
+  background: var(--bg-color);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  padding: 5px;
+  border-radius: 4px;
+  outline: none;
+}
+select:focus,
+input[type="date"]:focus,
+input[type="time"]:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 8px rgba(0, 229, 255, 0.3);
+}
+
+.days-selector {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.day-dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border-color);
+  background: var(--bg-color);
+  color: var(--text-main);
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+.day-dot.active {
+  background: rgba(0, 229, 255, 0.1);
+  color: var(--primary);
+  border-color: var(--primary);
+  box-shadow: var(--primary-glow);
+  text-shadow: 0 0 4px var(--primary);
+}
+
+.toolbar {
+  padding: 10px 15px;
+  display: flex;
+  gap: 12px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--sidebar-bg);
+}
+.toolbar button {
+  background: var(--bg-color);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+.toolbar button:hover {
+  background: var(--border-color);
+}
+
+#editor {
+  min-height: 200px;
+  padding: 20px;
+  outline: none;
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--text-main);
+}
+.editor-footer {
+  padding: 12px 20px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  gap: 15px;
+  background: var(--sidebar-bg);
+  border-radius: 0 0 12px 12px;
+}
+#note-topic {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-color);
+  color: white;
+  outline: none;
+}
+#note-topic:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 8px rgba(0, 229, 255, 0.2);
+}
+#save-note-btn {
+  background: var(--primary);
+  color: #0b0f19; /* Dark text on glowing button */
+  padding: 10px 24px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 800;
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
+  transition: all 0.2s ease;
+}
+#save-note-btn:hover {
+  background: var(--primary-hover);
+  box-shadow: var(--primary-glow);
+  transform: translateY(-1px);
+}
+
+/* Horizontal Cards Display */
+.notes-display {
+  margin-top: 25px;
+}
+.notes-display h3 {
+  color: var(--primary);
+  text-shadow: 0 0 8px rgba(0, 229, 255, 0.3);
+}
+#notes-grid {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  padding: 10px 0;
+}
+.note-card {
+  background: var(--card-bg);
+  min-width: 220px;
+  max-width: 220px;
+  padding: 16px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-color);
+  border-left: 4px solid var(--primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.note-card:hover {
+  transform: translateY(-3px);
+  border-left-color: var(--primary-hover);
+  box-shadow: var(--primary-glow);
+}
+
+/* Utility States */
+.hidden {
+  display: none !important;
+}
+
+/* Reading Modal Window */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+.modal-content {
+  background: var(--card-bg);
+  padding: 30px;
+  border-radius: 12px;
+  width: 80%;
+  max-width: 600px;
+  position: relative;
+  max-height: 80vh;
+  overflow-y: auto;
+  border: 1px solid var(--primary);
+  box-shadow: var(--primary-glow);
+}
+.close-modal {
+  position: absolute;
+  top: 15px;
+  right: 20px;
+  font-size: 28px;
+  cursor: pointer;
+  color: var(--text-main);
+  transition: color 0.2s;
+}
+.close-modal:hover {
+  color: var(--primary);
+  text-shadow: 0 0 8px var(--primary);
+}
+.modal-meta {
+  font-size: 13px;
+  color: #9ca3af;
+  margin-bottom: 15px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 5px;
+}

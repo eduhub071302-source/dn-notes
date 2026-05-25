@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DN Notes</title>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="manifest" href="manifest.json" />
+  </head>
+  <body>
+    <!-- Sliding Vertical Sidebar -->
+    <nav id="sidebar" class="open">
+      <div class="sidebar-header">
+        <button id="toggle-btn">☰</button>
+        <h2 class="brand-name">DN Notes</h2>
+      </div>
+
+      <div class="theme-customizer">
+        <label for="theme-color-picker" class="neon-btn"
+          >🎨 Customize Accent</label
+        >
+        <input type="color" id="theme-color-picker" value="#00ffcc" />
+      </div>
+
+      <!-- Google Auth Section -->
+      <div class="auth-container">
+        <button id="login-btn" class="google-btn">Continue with Google</button>
+        <div id="user-profile" class="user-profile hidden">
+          <img id="user-avatar" src="" alt="Avatar" />
+          <span id="user-name"></span>
+          <button id="logout-btn">Sign Out</button>
+        </div>
+      </div>
+
+      <ul>
+        <li data-category="daily-habits" class="active">Daily Habits</li>
+        <li data-category="school-notes">School Notes</li>
+        <li data-category="clz-notes">Clz Notes</li>
+        <li data-category="birthdays">Birthdays</li>
+        <li data-category="special-days">Special Days</li>
+      </ul>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main>
+      <div class="editor-container">
+        <!-- Professional Date/Time/Recurrence Picker -->
+        <div id="scheduling-options" class="scheduling-bar">
+          <div class="schedule-row">
+            <span class="category-indicator">Daily Habits Settings:</span>
+
+            <select id="habit-duration-type">
+              <option value="lifetime">Lifetime Habit</option>
+              <option value="range">Specific Date Range</option>
+            </select>
+
+            <div id="date-range-inputs" class="hidden">
+              <input type="date" id="start-date" title="Start Date" />
+              <span style="align-self: center">to</span>
+              <input type="date" id="end-date" title="End Date" />
+            </div>
+
+            <div class="time-picker-wrapper">
+              <label for="reminder-time">Reminder:</label>
+              <input type="time" id="reminder-time" value="07:00" />
+            </div>
+          </div>
+
+          <!-- Day Selector Toggles -->
+          <div class="days-selector" id="days-selector">
+            <span class="days-label">Repeat on:</span>
+            <button type="button" class="day-dot active" data-day="Mon">
+              M
+            </button>
+            <button type="button" class="day-dot active" data-day="Tue">
+              T
+            </button>
+            <button type="button" class="day-dot active" data-day="Wed">
+              W
+            </button>
+            <button type="button" class="day-dot active" data-day="Thu">
+              T
+            </button>
+            <button type="button" class="day-dot active" data-day="Fri">
+              F
+            </button>
+            <button type="button" class="day-dot active" data-day="Sat">
+              S
+            </button>
+            <button type="button" class="day-dot active" data-day="Sun">
+              S
+            </button>
+          </div>
+        </div>
+
+        <div id="special-days-options" class="scheduling-bar hidden">
+          <div class="schedule-row">
+            <span class="category-indicator">Sri Lankan Calendar Sync:</span>
+            <select
+              id="sl-holiday-year"
+              style="padding: 5px; border-radius: 4px"
+            >
+              <option value="2025">2025</option>
+              <option value="2026" selected>2026</option>
+              <option value="2027">2027</option>
+            </select>
+            <button id="fetch-holidays-btn" class="secondary-btn">
+              Load Public Holidays
+            </button>
+          </div>
+
+          <div id="holiday-tags-container" class="tags-container">
+            <span style="font-size: 13px; color: #64748b"
+              >Click "Load" to fetch Poya days and special events...</span
+            >
+          </div>
+
+          <input type="hidden" id="selected-holiday-date" />
+        </div>
+
+        <div class="toolbar">
+          <select id="font-family">
+            <option value="Arial">Arial</option>
+            <option value="Courier New">Courier</option>
+            <option value="Georgia">Georgia</option>
+            <option value="Trebuchet MS">Clean</option>
+          </select>
+          <input type="color" id="font-color" value="#2c3e50" />
+          <button onclick="document.execCommand('bold')"><b>B</b></button>
+          <button onclick="document.execCommand('italic')"><i>I</i></button>
+          <button onclick="document.execCommand('underline')"><u>U</u></button>
+        </div>
+
+        <!-- Editor Surface -->
+        <div
+          id="editor"
+          contenteditable="true"
+          placeholder="Write your beautiful note here..."
+        ></div>
+        <div class="editor-footer">
+          <input
+            type="text"
+            id="note-topic"
+            placeholder="Enter Note Topic Here..."
+            required
+          />
+          <button id="save-note-btn">Save to Cloud</button>
+        </div>
+      </div>
+
+      <!-- Dynamic Multi-Device Synced Cards Container -->
+      <div class="notes-display">
+        <h3>
+          Your Synced Notes (<span id="active-view-category">Daily Habits</span
+          >)
+        </h3>
+        <div id="notes-grid">
+          <!-- Mini horizontal cards inject here automatically from Firestore -->
+        </div>
+      </div>
+    </main>
+
+    <!-- Modal Pop-up to Read Notes -->
+    <div id="note-modal" class="modal hidden">
+      <div class="modal-content">
+        <span class="close-modal">&times;</span>
+        <h2 id="modal-title"></h2>
+        <p id="modal-meta" class="modal-meta"></p>
+        <div id="modal-body" class="modal-body"></div>
+      </div>
+    </div>
+
+    <!-- Firebase App and Feature SDK modules -->
+    <script type="module" src="app.js"></script>
+    <script>
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker
+          .register("sw.js")
+          .then(() => console.log("Service Worker Active"));
+      }
+    </script>
+  </body>
+</html>
