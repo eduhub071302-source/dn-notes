@@ -172,16 +172,18 @@ onAuthStateChanged(auth, (user) => {
       if (permission === "granted") {
         console.log("Notification permission granted.");
 
-        // 1. Register the service worker
-        await navigator.serviceWorker.register("sw.js");
+        // 1. Register the service worker with an explicit relative path
+        const swRegistration = await navigator.serviceWorker.register(
+          "./firebase-messaging-sw.js",
+        );
 
-        // 2. WAIT for the service worker to be fully installed and active before proceeding
-        const swRegistration = await navigator.serviceWorker.ready;
+        // Optional but recommended: Wait for the newly registered worker to be ready
+        await navigator.serviceWorker.ready;
 
         // 2. Pass the registration directly into the getToken function
         const currentToken = await getToken(messaging, {
           vapidKey: VAPID_KEY,
-          serviceWorkerRegistration: swRegistration,
+          serviceWorkerRegistration: swRegistration, // Passes the correctly scoped worker
         });
 
         if (currentToken) {
