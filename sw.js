@@ -42,11 +42,17 @@ const urlsToCache = [
 ];
 
 self.addEventListener("install", (event) => {
+  self.skipWaiting(); // FORCES the service worker to activate immediately
+
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(urlsToCache);
     }),
   );
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(clients.claim()); // FORCES the service worker to take control of the page immediately
 });
 
 self.addEventListener("fetch", (event) => {
