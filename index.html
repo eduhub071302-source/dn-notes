@@ -8,7 +8,6 @@
     <link rel="manifest" href="manifest.json" />
   </head>
   <body>
-    <!-- Sliding Vertical Sidebar -->
     <nav id="sidebar" class="open">
       <div class="sidebar-header">
         <button id="toggle-btn">☰</button>
@@ -22,7 +21,6 @@
         <input type="color" id="theme-color-picker" value="#00ffcc" />
       </div>
 
-      <!-- Google Auth Section -->
       <div class="auth-container">
         <div id="auth-forms" class="auth-forms">
           <input
@@ -48,9 +46,7 @@
           <button id="toggle-auth-mode-btn" class="text-btn">
             Need an account? Sign Up
           </button>
-
           <hr class="auth-divider" />
-
           <button id="login-btn" class="google-btn">
             Continue with Google
           </button>
@@ -72,18 +68,21 @@
       </ul>
     </nav>
 
-    <!-- Main Content Area -->
     <main>
       <div class="editor-container">
-        <!-- Professional Date/Time/Recurrence Picker -->
         <div id="scheduling-options" class="scheduling-bar">
           <div class="schedule-row">
-            <span class="category-indicator">Daily Habits Settings:</span>
+            <span class="category-indicator" id="dynamic-schedule-title"
+              >Scheduling Settings:</span
+            >
 
-            <select id="habit-duration-type">
-              <option value="lifetime">Lifetime Habit</option>
-              <option value="range">Specific Date Range</option>
-            </select>
+            <div id="duration-select-wrapper">
+              <select id="habit-duration-type">
+                <option value="lifetime">Continuous / Lifetime</option>
+                <option value="range">Specific Date Range</option>
+                <option value="specific-date">Single Specific Date</option>
+              </select>
+            </div>
 
             <div id="date-range-inputs" class="hidden">
               <input type="date" id="start-date" title="Start Date" />
@@ -91,13 +90,28 @@
               <input type="date" id="end-date" title="End Date" />
             </div>
 
-            <div class="time-picker-wrapper">
-              <label for="reminder-time">Reminder:</label>
-              <input type="time" id="reminder-time" value="07:00" />
+            <div id="single-date-input" class="hidden">
+              <input type="date" id="specific-date" title="Specific Date" />
+            </div>
+
+            <div id="birthday-date-wrapper" class="hidden">
+              <label>Yearly Event Date:</label>
+              <input type="date" id="birthday-date" />
             </div>
           </div>
 
-          <!-- Day Selector Toggles -->
+          <div class="schedule-row time-row">
+            <label>Reminder Times:</label>
+            <div id="time-pickers-container" class="time-pickers-container">
+              <div class="time-picker-wrapper">
+                <input type="time" class="reminder-time-input" value="07:00" />
+              </div>
+            </div>
+            <button id="add-time-btn" class="secondary-btn">
+              + Add Time (Max 5)
+            </button>
+          </div>
+
           <div class="days-selector" id="days-selector">
             <span class="days-label">Repeat on:</span>
             <button type="button" class="day-dot active" data-day="Mon">
@@ -124,7 +138,11 @@
           </div>
         </div>
 
-        <div id="special-days-options" class="scheduling-bar hidden">
+        <div
+          id="special-days-options"
+          class="scheduling-bar hidden"
+          style="border-top: 1px dashed var(--border-color); border-radius: 0"
+        >
           <div class="schedule-row">
             <span class="category-indicator">Sri Lankan Calendar Sync:</span>
             <select
@@ -139,13 +157,11 @@
               Load Public Holidays
             </button>
           </div>
-
           <div id="holiday-tags-container" class="tags-container">
             <span style="font-size: 13px; color: #64748b"
               >Click "Load" to fetch Poya days and special events...</span
             >
           </div>
-
           <input type="hidden" id="selected-holiday-date" />
         </div>
 
@@ -162,7 +178,6 @@
           <button onclick="document.execCommand('underline')"><u>U</u></button>
         </div>
 
-        <!-- Editor Surface -->
         <div
           id="editor"
           contenteditable="true"
@@ -179,29 +194,30 @@
         </div>
       </div>
 
-      <!-- Dynamic Multi-Device Synced Cards Container -->
       <div class="notes-display">
         <h3>
           Your Synced Notes (<span id="active-view-category">Daily Habits</span
           >)
         </h3>
-        <div id="notes-grid">
-          <!-- Mini horizontal cards inject here automatically from Firestore -->
-        </div>
+        <div id="notes-grid"></div>
       </div>
     </main>
 
-    <!-- Modal Pop-up to Read Notes -->
     <div id="note-modal" class="modal hidden">
       <div class="modal-content">
         <span class="close-modal">&times;</span>
         <h2 id="modal-title"></h2>
         <p id="modal-meta" class="modal-meta"></p>
         <div id="modal-body" class="modal-body"></div>
+        <div class="modal-actions">
+          <button id="mark-done-btn" class="success-btn">✓ Mark as Done</button>
+          <button id="delete-note-btn" class="danger-btn">
+            🗑 Delete Note
+          </button>
+        </div>
       </div>
     </div>
 
-    <!-- Firebase App and Feature SDK modules -->
     <script type="module" src="app.js"></script>
     <script>
       if ("serviceWorker" in navigator) {
