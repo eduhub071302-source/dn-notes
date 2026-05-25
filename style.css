@@ -353,3 +353,54 @@ input[type="time"]:focus {
   border-bottom: 1px solid var(--border-color);
   padding-bottom: 5px;
 }
+
+/* --- New Auth Form Styles --- */
+.auth-forms {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+.auth-input {
+  background: var(--bg-color);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  padding: 8px;
+  border-radius: 4px;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+.auth-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 8px rgba(0, 229, 255, 0.3);
+}
+.primary-btn {
+  background: var(--primary);
+  color: #0b0f19;
+  padding: 8px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s ease;
+}
+.primary-btn:hover {
+  background: var(--primary-hover);
+  box-shadow: var(--primary-glow);
+}
+.text-btn {
+  background: none;
+  color: #9ca3af;
+  border: none;
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 4px;
+}
+.auth-divider {
+  border: 0;
+  border-top: 1px solid var(--border-color);
+  margin: 5px 0;
+  width: 100%;
+}
