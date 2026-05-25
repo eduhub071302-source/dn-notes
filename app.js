@@ -519,16 +519,44 @@ function openNoteModal(docId, data) {
   activeModalNoteId = docId; // Store globally for action buttons
   document.getElementById("modal-title").innerText = data.topic;
 
-  let metaText = `Category: ${data.category.replace("-", " ").toUpperCase()}`;
-  if (
-    data.scheduling &&
-    data.scheduling.times &&
-    data.scheduling.times.length > 0
-  ) {
-    metaText += ` | Reminders: ${data.scheduling.times.join(", ")}`;
+  // Build a highly-detailed, clean HTML layout for your metadata
+  let metaHTML = `<strong>Category:</strong> ${data.category.replace("-", " ").toUpperCase()}`;
+
+  const sched = data.scheduling;
+  if (sched) {
+    if (data.category === "birthdays") {
+      if (sched.birthdayDate) {
+        metaHTML += `<br><strong>🎈 Event Date:</strong> ${sched.birthdayDate}`;
+      }
+    } else if (data.category === "special-days") {
+      if (sched.holidayDate) {
+        metaHTML += `<br><strong>🗓️ Holiday Date:</strong> ${sched.holidayDate}`;
+      }
+    } else {
+      // Handle normal category durations
+      let typeLabel = "Continuous / Lifetime";
+      if (sched.type === "specific-date") {
+        typeLabel = `📅 Single Specific Date (${sched.singleDate || "Not Specified"})`;
+      } else if (sched.type === "range") {
+        typeLabel = `⏳ Date Range (${sched.startDate || "N/A"} to ${sched.endDate || "N/A"})`;
+      }
+
+      metaHTML += `<br><strong>Type:</strong> ${typeLabel}`;
+
+      // Add weekly repeating routine if present
+      if (sched.repeatDays && sched.repeatDays.length > 0) {
+        metaHTML += `<br><strong>🔁 Repeats On:</strong> ${sched.repeatDays.join(", ")}`;
+      }
+    }
+
+    // Add designated alarm times
+    if (sched.times && sched.times.length > 0) {
+      metaHTML += `<br><strong>⏰ Reminders Scheduled:</strong> ${sched.times.join(", ")}`;
+    }
   }
 
-  document.getElementById("modal-meta").innerText = metaText;
+  // Swap innerText to innerHTML so formatting displays perfectly
+  document.getElementById("modal-meta").innerHTML = metaHTML;
   document.getElementById("modal-body").innerHTML = data.content;
 
   // Toggle UI of Done button based on current status
