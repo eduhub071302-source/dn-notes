@@ -8,6 +8,9 @@ import {
   onSnapshot,
   orderBy,
   serverTimestamp,
+  deleteDoc, // NEW
+  doc, // NEW
+  updateDoc, // NEW
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import {
   getAuth,
@@ -28,27 +31,24 @@ const firebaseConfig = {
   appId: "1:915761462285:web:8ffbbd34422f0da26c6944",
 };
 
-// Intialize Firebase Application modules
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
-// System variables
 let currentUser = null;
 let activeCategory = "daily-habits";
 let selectedDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 let unsubscribeNotes = null;
+let activeModalNoteId = null; // Tracks the currently opened note ID for Delete/Done ops
 
-// Auth UI binding elements
+// Auth UI bindings
 const authForms = document.getElementById("auth-forms");
 const loginBtn = document.getElementById("login-btn");
 const logoutBtn = document.getElementById("logout-btn");
 const userProfileView = document.getElementById("user-profile");
 const userAvatar = document.getElementById("user-avatar");
 const userNameText = document.getElementById("user-name");
-
-// New Email/Password bindings
 const emailInput = document.getElementById("email-input");
 const passwordInput = document.getElementById("password-input");
 const confirmPasswordInput = document.getElementById("confirm-password-input");
@@ -57,7 +57,6 @@ const toggleAuthModeBtn = document.getElementById("toggle-auth-mode-btn");
 
 let isSignUpMode = false;
 
-// Toggle between Login and Sign Up views
 toggleAuthModeBtn.addEventListener("click", () => {
   isSignUpMode = !isSignUpMode;
   if (isSignUpMode) {
@@ -71,7 +70,6 @@ toggleAuthModeBtn.addEventListener("click", () => {
   }
 });
 
-// Handle Email / Password Execution
 emailActionBtn.addEventListener("click", async () => {
   const email = emailInput.value.trim();
   const password = passwordInput.value;
@@ -85,9 +83,7 @@ emailActionBtn.addEventListener("click", async () => {
       if (password !== confirmPassword) return alert("Passwords do not match!");
       if (password.length < 6)
         return alert("Password must be at least 6 characters.");
-
       await createUserWithEmailAndPassword(auth, email, password);
-      // Optional: Clear form on success
       emailInput.value = "";
       passwordInput.value = "";
       confirmPasswordInput.value = "";
@@ -95,54 +91,40 @@ emailActionBtn.addEventListener("click", async () => {
       await signInWithEmailAndPassword(auth, email, password);
     }
   } catch (err) {
-    // Show the actual Firebase error to the user
     alert(`Authentication Error: ${err.message}`);
-    console.error("Auth execution dropped: ", err);
   }
 });
 
-/* --- Authentication Watcher --- */
 onAuthStateChanged(auth, (user) => {
   if (user) {
     currentUser = user;
-    authForms.classList.add("hidden"); // Hide all forms
+    authForms.classList.add("hidden");
     userProfileView.classList.remove("hidden");
-
-    // Email users don't have avatars by default, so we generate one
     userAvatar.src =
       user.photoURL ||
       `https://ui-avatars.com/api/?name=${user.email}&background=00e5ff&color=0b0f19`;
-
-    // Use Display Name if available (Google), otherwise use the prefix of the email
     userNameText.innerText = user.displayName
       ? user.displayName.split(" ")[0]
       : user.email.split("@")[0];
-
-    // Load Real-time, Cross-device Synchronized data
     streamUserNotes();
   } else {
     currentUser = null;
     userProfileView.classList.add("hidden");
-    authForms.classList.remove("hidden"); // Show forms
-    notesGrid.innerHTML =
+    authForms.classList.remove("hidden");
+    document.getElementById("notes-grid").innerHTML =
       '<p style="padding:15px; color:#64748b;">Please login to load your cloud synced notes.</p>';
     if (unsubscribeNotes) unsubscribeNotes();
   }
 });
 
-// Handle Google Login (Now with proper error alerting)
 loginBtn.addEventListener("click", () => {
-  signInWithPopup(auth, provider).catch((err) => {
-    console.error("Google Auth Error:", err);
-    alert(
-      `Google Sign-In Failed: ${err.message}. \nMake sure Google Auth is enabled in your Firebase Console.`,
-    );
-  });
+  signInWithPopup(auth, provider).catch((err) =>
+    alert(`Google Sign-In Failed: ${err.message}`),
+  );
 });
-
 logoutBtn.addEventListener("click", () => signOut(auth));
 
-// App Structural UI bindings
+/* --- Structural UI Bindings --- */
 const sidebar = document.getElementById("sidebar");
 const toggleBtn = document.getElementById("toggle-btn");
 const editor = document.getElementById("editor");
@@ -150,136 +132,45 @@ const topicInput = document.getElementById("note-topic");
 const saveBtn = document.getElementById("save-note-btn");
 const notesGrid = document.getElementById("notes-grid");
 
-// Habit Specific Custom Picker elements
+// Multi-Time UI Logic
+const addTimeBtn = document.getElementById("add-time-btn");
+const timePickersContainer = document.getElementById("time-pickers-container");
+
+addTimeBtn.addEventListener("click", () => {
+  const currentPickers = timePickersContainer.querySelectorAll(
+    ".reminder-time-input",
+  ).length;
+  if (currentPickers >= 5)
+    return alert("You can set a maximum of 5 reminder times.");
+
+  const wrapper = document.createElement("div");
+  wrapper.className = "time-picker-wrapper";
+  wrapper.innerHTML = `
+    <input type="time" class="reminder-time-input" value="08:00" />
+    <button class="remove-time-btn" style="background:none; border:none; color:#ef4444; cursor:pointer; font-weight:bold;">X</button>
+  `;
+  timePickersContainer.appendChild(wrapper);
+});
+
+timePickersContainer.addEventListener("click", (e) => {
+  if (e.target.classList.contains("remove-time-btn")) {
+    e.target.parentElement.remove();
+  }
+});
+
+// Scheduling Toggles
 const durationSelect = document.getElementById("habit-duration-type");
 const rangeInputsWrap = document.getElementById("date-range-inputs");
+const singleDateWrap = document.getElementById("single-date-input");
 const dayButtons = document.querySelectorAll(".day-dot");
 
-// Modal Elements
-const noteModal = document.getElementById("note-modal");
-const closeModal = document.querySelector(".close-modal");
-
-/* --- Sri Lankan Holidays API Integration (Optimized with Local Cache) --- */
-const fetchHolidaysBtn = document.getElementById("fetch-holidays-btn");
-const holidayTagsContainer = document.getElementById("holiday-tags-container");
-const slHolidayYear = document.getElementById("sl-holiday-year");
-const selectedHolidayDate = document.getElementById("selected-holiday-date");
-
-// Paste your Calendarific API Key here
-const CALENDARIFIC_API_KEY = "sbPplbaZdE6zrjhRItLSikyOycPAHirX";
-
-fetchHolidaysBtn.addEventListener("click", async () => {
-  const year = slHolidayYear.value;
-  const cacheKey = `sl_holidays_${year}`; // e.g., "sl_holidays_2026"
-
-  // 1. Check if we already have this year's data saved on the device
-  const cachedData = localStorage.getItem(cacheKey);
-
-  if (cachedData) {
-    // Data exists! Parse it and render immediately without using the API
-    const holidays = JSON.parse(cachedData);
-    renderHolidays(holidays, true);
-    return;
-  }
-
-  // 2. If no cache exists for this year, fetch it from the cloud
-  holidayTagsContainer.innerHTML =
-    '<span style="font-size:13px; color:#64748b;">Fetching calendar data from the cloud...</span>';
-
-  try {
-    const response = await fetch(
-      `https://calendarific.com/api/v2/holidays?api_key=${CALENDARIFIC_API_KEY}&country=LK&year=${year}`,
-    );
-    const data = await response.json();
-    const holidays = data.response.holidays;
-
-    // 3. Save the fresh data to Local Storage so we never have to fetch it again this year
-    localStorage.setItem(cacheKey, JSON.stringify(holidays));
-
-    // Render the newly fetched data
-    renderHolidays(holidays, false);
-  } catch (err) {
-    console.error("API Fetch Error:", err);
-    holidayTagsContainer.innerHTML =
-      '<span style="color:#ef4444; font-size:13px;">Failed to load calendar. Please check your API Key or connection.</span>';
-  }
-});
-
-// Helper function to build the UI tags (keeps the code clean)
-function renderHolidays(holidays, isCached) {
-  // Add a neat little indicator so the user knows if it was instant or downloaded
-  holidayTagsContainer.innerHTML = isCached
-    ? '<span style="font-size:12px; color:#10b981; width: 100%; display: block; margin-bottom: 8px;">✓ Loaded instantly from device cache</span>'
-    : '<span style="font-size:12px; color:#3b82f6; width: 100%; display: block; margin-bottom: 8px;">✓ Downloaded and saved to device for future use</span>';
-
-  holidays.forEach((holiday) => {
-    const tag = document.createElement("span");
-    tag.className = "holiday-tag";
-    tag.innerText = `${holiday.name} (${holiday.date.iso.split("T")[0]})`;
-
-    tag.addEventListener("click", () => {
-      // Remove selection from all tags, highlight clicked tag
-      document
-        .querySelectorAll(".holiday-tag")
-        .forEach((t) => t.classList.remove("selected"));
-      tag.classList.add("selected");
-
-      // Set hidden input value for Firebase save
-      selectedHolidayDate.value = holiday.date.iso;
-
-      // Automatically make the holiday name the topic of the note
-      document.getElementById("note-topic").value = holiday.name;
-    });
-
-    holidayTagsContainer.appendChild(tag);
-  });
-}
-
-/* --- Dynamic Neon Theme Engine --- */
-const colorPicker = document.getElementById("theme-color-picker");
-
-// 1. Load the user's saved color from Local Storage when the app opens
-const savedNeonColor = localStorage.getItem("dnNotesNeonTheme");
-if (savedNeonColor) {
-  document.documentElement.style.setProperty("--primary", savedNeonColor);
-  colorPicker.value = savedNeonColor;
-}
-
-// 2. Change the entire app's glow and accent color in real-time as they drag the picker
-colorPicker.addEventListener("input", (e) => {
-  const newColor = e.target.value;
-  document.documentElement.style.setProperty("--primary", newColor);
-});
-
-// 3. Save the final color choice to the browser's memory
-colorPicker.addEventListener("change", (e) => {
-  localStorage.setItem("dnNotesNeonTheme", e.target.value);
-});
-
-/* --- Sidebar Panel System --- */
-toggleBtn.addEventListener("click", () => sidebar.classList.toggle("open"));
-
-document.querySelectorAll("#sidebar li").bind = document
-  .querySelectorAll("#sidebar li")
-  .forEach((item) => {
-    item.addEventListener("click", (e) => {
-      document
-        .querySelectorAll("#sidebar li")
-        .forEach((li) => li.classList.remove("active"));
-      item.classList.add("active");
-      activeCategory = item.dataset.category;
-      document.getElementById("active-view-category").innerText =
-        item.innerText;
-
-      manageSchedulingUI();
-      streamUserNotes(); // Re-filter visual grids dynamically
-    });
-  });
-
-/* --- Habit UI Functional Controls --- */
 durationSelect.addEventListener("change", (e) => {
+  rangeInputsWrap.classList.add("hidden");
+  singleDateWrap.classList.add("hidden");
+
   if (e.target.value === "range") rangeInputsWrap.classList.remove("hidden");
-  else rangeInputsWrap.classList.add("hidden");
+  if (e.target.value === "specific-date")
+    singleDateWrap.classList.remove("hidden");
 });
 
 dayButtons.forEach((btn) => {
@@ -295,23 +186,111 @@ dayButtons.forEach((btn) => {
   });
 });
 
+/* --- Category Management Engine --- */
+document.querySelectorAll("#sidebar li").forEach((item) => {
+  item.addEventListener("click", (e) => {
+    document
+      .querySelectorAll("#sidebar li")
+      .forEach((li) => li.classList.remove("active"));
+    item.classList.add("active");
+    activeCategory = item.dataset.category;
+    document.getElementById("active-view-category").innerText = item.innerText;
+    manageSchedulingUI();
+    streamUserNotes();
+  });
+});
+
 function manageSchedulingUI() {
-  const dailyHabitsBar = document.getElementById("scheduling-options");
   const specialDaysBar = document.getElementById("special-days-options");
+  const durationSelectWrapper = document.getElementById(
+    "duration-select-wrapper",
+  );
+  const birthdayDateWrapper = document.getElementById("birthday-date-wrapper");
+  const daysSelector = document.getElementById("days-selector");
 
-  // Hide everything first
-  dailyHabitsBar.classList.add("hidden");
+  // Reset generic views
   specialDaysBar.classList.add("hidden");
+  durationSelectWrapper.classList.remove("hidden");
+  birthdayDateWrapper.classList.add("hidden");
+  daysSelector.classList.remove("hidden");
 
-  // Show the correct tools based on user click
-  if (activeCategory === "daily-habits") {
-    dailyHabitsBar.classList.remove("hidden");
+  if (activeCategory === "birthdays") {
+    durationSelectWrapper.classList.add("hidden");
+    daysSelector.classList.add("hidden");
+    birthdayDateWrapper.classList.remove("hidden");
   } else if (activeCategory === "special-days") {
     specialDaysBar.classList.remove("hidden");
+    durationSelectWrapper.classList.add("hidden");
+    daysSelector.classList.add("hidden");
   }
 }
 
-/* --- Document Editor Execution Scripts --- */
+/* --- Sri Lankan Holidays API --- */
+const CALENDARIFIC_API_KEY = "sbPplbaZdE6zrjhRItLSikyOycPAHirX";
+const fetchHolidaysBtn = document.getElementById("fetch-holidays-btn");
+const holidayTagsContainer = document.getElementById("holiday-tags-container");
+const slHolidayYear = document.getElementById("sl-holiday-year");
+const selectedHolidayDate = document.getElementById("selected-holiday-date");
+
+fetchHolidaysBtn.addEventListener("click", async () => {
+  const year = slHolidayYear.value;
+  const cacheKey = `sl_holidays_${year}`;
+  const cachedData = localStorage.getItem(cacheKey);
+
+  if (cachedData) return renderHolidays(JSON.parse(cachedData), true);
+
+  holidayTagsContainer.innerHTML =
+    '<span style="font-size:13px; color:#64748b;">Fetching calendar data from the cloud...</span>';
+  try {
+    const response = await fetch(
+      `https://calendarific.com/api/v2/holidays?api_key=${CALENDARIFIC_API_KEY}&country=LK&year=${year}`,
+    );
+    const data = await response.json();
+    localStorage.setItem(cacheKey, JSON.stringify(data.response.holidays));
+    renderHolidays(data.response.holidays, false);
+  } catch (err) {
+    holidayTagsContainer.innerHTML =
+      '<span style="color:#ef4444; font-size:13px;">Failed to load calendar. Check API Key/Connection.</span>';
+  }
+});
+
+function renderHolidays(holidays, isCached) {
+  holidayTagsContainer.innerHTML = isCached
+    ? '<span style="font-size:12px; color:#10b981; width: 100%; display: block; margin-bottom: 8px;">✓ Loaded instantly from device cache</span>'
+    : '<span style="font-size:12px; color:#3b82f6; width: 100%; display: block; margin-bottom: 8px;">✓ Downloaded and saved to device for future use</span>';
+
+  holidays.forEach((holiday) => {
+    const tag = document.createElement("span");
+    tag.className = "holiday-tag";
+    tag.innerText = `${holiday.name} (${holiday.date.iso.split("T")[0]})`;
+    tag.addEventListener("click", () => {
+      document
+        .querySelectorAll(".holiday-tag")
+        .forEach((t) => t.classList.remove("selected"));
+      tag.classList.add("selected");
+      selectedHolidayDate.value = holiday.date.iso;
+      document.getElementById("note-topic").value = holiday.name;
+    });
+    holidayTagsContainer.appendChild(tag);
+  });
+}
+
+/* --- Dynamic Neon Theme Engine --- */
+const colorPicker = document.getElementById("theme-color-picker");
+const savedNeonColor = localStorage.getItem("dnNotesNeonTheme");
+if (savedNeonColor) {
+  document.documentElement.style.setProperty("--primary", savedNeonColor);
+  colorPicker.value = savedNeonColor;
+}
+colorPicker.addEventListener("input", (e) =>
+  document.documentElement.style.setProperty("--primary", e.target.value),
+);
+colorPicker.addEventListener("change", (e) =>
+  localStorage.setItem("dnNotesNeonTheme", e.target.value),
+);
+
+/* --- Sidebar & Document Editor UI --- */
+toggleBtn.addEventListener("click", () => sidebar.classList.toggle("open"));
 document.getElementById("font-family").addEventListener("change", function () {
   document.execCommand("fontName", false, this.value);
 });
@@ -322,7 +301,7 @@ document.getElementById("font-color").addEventListener("input", function () {
 /* --- Multi-device Live Data Stream --- */
 function streamUserNotes() {
   if (!currentUser) return;
-  if (unsubscribeNotes) unsubscribeNotes(); // Clear previous active listeners
+  if (unsubscribeNotes) unsubscribeNotes();
 
   const notesQuery = query(
     collection(db, "notes"),
@@ -331,71 +310,64 @@ function streamUserNotes() {
     orderBy("createdAt", "desc"),
   );
 
-  unsubscribeNotes = onSnapshot(
-    notesQuery,
-    (snapshot) => {
-      notesGrid.innerHTML = "";
-      if (snapshot.empty) {
-        notesGrid.innerHTML =
-          '<p style="color:#64748b; font-size:14px; padding:10px;">No notes found under this category.</p>';
-        return;
-      }
+  unsubscribeNotes = onSnapshot(notesQuery, (snapshot) => {
+    notesGrid.innerHTML = "";
+    if (snapshot.empty) {
+      notesGrid.innerHTML =
+        '<p style="color:#64748b; font-size:14px; padding:10px;">No notes found under this category.</p>';
+      return;
+    }
 
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        const card = document.createElement("div");
-        card.className = "note-card";
-        card.innerHTML = `<h4>${data.topic || "Untitled Note"}</h4><p style="font-size:12px; color:#64748b;">Click to Read</p>`;
+    snapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      const card = document.createElement("div");
+      card.className = `note-card ${data.isDone ? "done-card" : ""}`;
 
-        card.addEventListener("click", () => openNoteModal(data));
-        notesGrid.appendChild(card);
-      });
-    },
-    (error) => {
-      console.error(
-        "Firestore security restrictions active or missing composite index: ",
-        error,
-      );
-    },
-  );
+      let badge = data.isDone ? `<span class="done-badge">✓ DONE</span>` : "";
+
+      card.innerHTML = `
+        ${badge}
+        <h4 style="${data.isDone ? "text-decoration: line-through; opacity: 0.7;" : ""}">${data.topic || "Untitled Note"}</h4>
+        <p style="font-size:12px; color:#64748b;">Click to Open</p>
+      `;
+
+      // Pass the Document ID to the modal so we can delete or update it later
+      card.addEventListener("click", () => openNoteModal(docSnap.id, data));
+      notesGrid.appendChild(card);
+    });
+  });
 }
 
 /* --- Save Note Infrastructure --- */
 saveBtn.addEventListener("click", async () => {
-  if (!currentUser)
-    return alert(
-      "Please authenticate with Google first to store synced configurations.",
-    );
+  if (!currentUser) return alert("Please authenticate with Google first.");
   const content = editor.innerHTML;
   const topic = topicInput.value.trim();
 
   if (!topic || editor.innerText.trim() === "")
     return alert("Please ensure Topic and Note Body spaces are populated.");
 
+  // Gather all selected times into an array
+  const reminderTimes = Array.from(
+    document.querySelectorAll(".reminder-time-input"),
+  ).map((input) => input.value);
+
   const payload = {
     uid: currentUser.uid,
     category: activeCategory,
     topic: topic,
     content: content,
+    isDone: false, // New parameter for the "Done" feature
     createdAt: serverTimestamp(),
     scheduling: {
-      time:
-        activeCategory === "daily-habits"
-          ? document.getElementById("reminder-time").value
-          : null,
-      type: activeCategory === "daily-habits" ? durationSelect.value : null,
-      startDate:
-        durationSelect.value === "range" && activeCategory === "daily-habits"
-          ? document.getElementById("start-date").value
-          : null,
-      endDate:
-        durationSelect.value === "range" && activeCategory === "daily-habits"
-          ? document.getElementById("end-date").value
-          : null,
-      repeatDays: activeCategory === "daily-habits" ? [...selectedDays] : null,
-      // Capture the holiday date if we are in the Special Days category
-      holidayDate:
-        activeCategory === "special-days" ? selectedHolidayDate.value : null,
+      times: reminderTimes, // Saves the array of 1 to 5 times
+      type: durationSelect.value,
+      repeatDays: [...selectedDays],
+      startDate: document.getElementById("start-date").value,
+      endDate: document.getElementById("end-date").value,
+      singleDate: document.getElementById("specific-date").value,
+      birthdayDate: document.getElementById("birthday-date").value,
+      holidayDate: selectedHolidayDate.value,
     },
   };
 
@@ -403,25 +375,79 @@ saveBtn.addEventListener("click", async () => {
     await addDoc(collection(db, "notes"), payload);
     editor.innerHTML = "";
     topicInput.value = "";
-    alert("Synced successfully across connected accounts!");
+    alert("Saved & Synced!");
   } catch (err) {
     console.error("Write execution dropped: ", err);
   }
 });
 
-/* --- Pop-up View Window Logic --- */
-function openNoteModal(data) {
+/* --- Pop-up View Window Logic & Actions --- */
+const noteModal = document.getElementById("note-modal");
+const closeModal = document.querySelector(".close-modal");
+const deleteNoteBtn = document.getElementById("delete-note-btn");
+const markDoneBtn = document.getElementById("mark-done-btn");
+
+function openNoteModal(docId, data) {
+  activeModalNoteId = docId; // Store globally for action buttons
   document.getElementById("modal-title").innerText = data.topic;
+
   let metaText = `Category: ${data.category.replace("-", " ").toUpperCase()}`;
-  if (data.scheduling && data.scheduling.time) {
-    metaText += ` | Reminder: ${data.scheduling.time} (${data.scheduling.type})`;
+  if (
+    data.scheduling &&
+    data.scheduling.times &&
+    data.scheduling.times.length > 0
+  ) {
+    metaText += ` | Reminders: ${data.scheduling.times.join(", ")}`;
   }
+
   document.getElementById("modal-meta").innerText = metaText;
   document.getElementById("modal-body").innerHTML = data.content;
+
+  // Toggle UI of Done button based on current status
+  if (data.isDone) {
+    markDoneBtn.innerText = "⟲ Mark as Undone";
+    markDoneBtn.dataset.currentStatus = "done";
+  } else {
+    markDoneBtn.innerText = "✓ Mark as Done";
+    markDoneBtn.dataset.currentStatus = "pending";
+  }
+
   noteModal.classList.remove("hidden");
 }
 
 closeModal.addEventListener("click", () => noteModal.classList.add("hidden"));
 window.addEventListener("click", (e) => {
   if (e.target === noteModal) noteModal.classList.add("hidden");
+});
+
+// Delete Note Execution
+deleteNoteBtn.addEventListener("click", async () => {
+  if (!activeModalNoteId) return;
+  if (
+    confirm(
+      "Are you sure you want to permanently delete this note across all devices?",
+    )
+  ) {
+    try {
+      await deleteDoc(doc(db, "notes", activeModalNoteId));
+      noteModal.classList.add("hidden");
+    } catch (err) {
+      alert("Failed to delete: " + err.message);
+    }
+  }
+});
+
+// Mark Note as Done Execution
+markDoneBtn.addEventListener("click", async () => {
+  if (!activeModalNoteId) return;
+  const isCurrentlyDone = markDoneBtn.dataset.currentStatus === "done";
+  try {
+    // Toggle the boolean value in Firestore
+    await updateDoc(doc(db, "notes", activeModalNoteId), {
+      isDone: !isCurrentlyDone,
+    });
+    noteModal.classList.add("hidden");
+  } catch (err) {
+    alert("Failed to update status: " + err.message);
+  }
 });
