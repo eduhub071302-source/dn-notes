@@ -404,13 +404,49 @@ colorPicker.addEventListener("change", (e) =>
 );
 
 /* --- Sidebar & Document Editor UI --- */
+/* --- Sidebar & Document Editor UI --- */
 toggleBtn.addEventListener("click", () => sidebar.classList.toggle("open"));
-document.getElementById("font-family").addEventListener("change", function () {
+
+const fontSelect = document.getElementById("font-family");
+const colorSelect = document.getElementById("font-color");
+const btnBold = document.getElementById("btn-bold");
+const btnItalic = document.getElementById("btn-italic");
+const btnUnderline = document.getElementById("btn-underline");
+
+// Dropdowns steal focus natively, so we force focus back to the editor after selection
+fontSelect.addEventListener("change", function () {
   document.execCommand("fontName", false, this.value);
+  editor.focus(); 
 });
-document.getElementById("font-color").addEventListener("input", function () {
+colorSelect.addEventListener("input", function () {
   document.execCommand("foreColor", false, this.value);
+  editor.focus();
 });
+
+// Formatting Buttons: Prevent focus loss via 'mousedown' + preventDefault()
+[
+  { btn: btnBold, cmd: 'bold' },
+  { btn: btnItalic, cmd: 'italic' },
+  { btn: btnUnderline, cmd: 'underline' }
+].forEach(({ btn, cmd }) => {
+  btn.addEventListener("mousedown", (e) => {
+    e.preventDefault(); // CRITICAL: Stops the browser from moving the cursor to the button
+    document.execCommand(cmd, false, null);
+    updateToolbarState(); // Visually update the button to look pressed
+  });
+});
+
+// Function to light up buttons if the cursor is on Bold/Italic/Underline text
+function updateToolbarState() {
+  btnBold.classList.toggle("active-tool", document.queryCommandState("bold"));
+  btnItalic.classList.toggle("active-tool", document.queryCommandState("italic"));
+  btnUnderline.classList.toggle("active-tool", document.queryCommandState("underline"));
+}
+
+// Check the style state whenever the user types or clicks inside the editor
+editor.addEventListener("keyup", updateToolbarState);
+editor.addEventListener("mouseup", updateToolbarState);
+editor.addEventListener("focus", updateToolbarState);
 
 /* --- Multi-device Live Data Stream --- */
 function streamUserNotes() {
