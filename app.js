@@ -15,6 +15,8 @@ import {
   GoogleAuthProvider,
   onAuthStateChanged,
   signOut,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 const firebaseConfig = {
@@ -39,11 +41,106 @@ let selectedDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 let unsubscribeNotes = null;
 
 // Auth UI binding elements
+const authForms = document.getElementById("auth-forms");
 const loginBtn = document.getElementById("login-btn");
 const logoutBtn = document.getElementById("logout-btn");
 const userProfileView = document.getElementById("user-profile");
 const userAvatar = document.getElementById("user-avatar");
 const userNameText = document.getElementById("user-name");
+
+// New Email/Password bindings
+const emailInput = document.getElementById("email-input");
+const passwordInput = document.getElementById("password-input");
+const confirmPasswordInput = document.getElementById("confirm-password-input");
+const emailActionBtn = document.getElementById("email-action-btn");
+const toggleAuthModeBtn = document.getElementById("toggle-auth-mode-btn");
+
+let isSignUpMode = false;
+
+// Toggle between Login and Sign Up views
+toggleAuthModeBtn.addEventListener("click", () => {
+  isSignUpMode = !isSignUpMode;
+  if (isSignUpMode) {
+    confirmPasswordInput.classList.remove("hidden");
+    emailActionBtn.innerText = "Sign Up";
+    toggleAuthModeBtn.innerText = "Already have an account? Sign In";
+  } else {
+    confirmPasswordInput.classList.add("hidden");
+    emailActionBtn.innerText = "Sign In";
+    toggleAuthModeBtn.innerText = "Need an account? Sign Up";
+  }
+});
+
+// Handle Email / Password Execution
+emailActionBtn.addEventListener("click", async () => {
+  const email = emailInput.value.trim();
+  const password = passwordInput.value;
+  const confirmPassword = confirmPasswordInput.value;
+
+  if (!email || !password)
+    return alert("Please enter both email and password.");
+
+  try {
+    if (isSignUpMode) {
+      if (password !== confirmPassword) return alert("Passwords do not match!");
+      if (password.length < 6)
+        return alert("Password must be at least 6 characters.");
+
+      await createUserWithEmailAndPassword(auth, email, password);
+      // Optional: Clear form on success
+      emailInput.value = "";
+      passwordInput.value = "";
+      confirmPasswordInput.value = "";
+    } else {
+      await signInWithEmailAndPassword(auth, email, password);
+    }
+  } catch (err) {
+    // Show the actual Firebase error to the user
+    alert(`Authentication Error: ${err.message}`);
+    console.error("Auth execution dropped: ", err);
+  }
+});
+
+/* --- Authentication Watcher --- */
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    currentUser = user;
+    authForms.classList.add("hidden"); // Hide all forms
+    userProfileView.classList.remove("hidden");
+
+    // Email users don't have avatars by default, so we generate one
+    userAvatar.src =
+      user.photoURL ||
+      `https://ui-avatars.com/api/?name=${user.email}&background=00e5ff&color=0b0f19`;
+
+    // Use Display Name if available (Google), otherwise use the prefix of the email
+    userNameText.innerText = user.displayName
+      ? user.displayName.split(" ")[0]
+      : user.email.split("@")[0];
+
+    // Load Real-time, Cross-device Synchronized data
+    streamUserNotes();
+  } else {
+    currentUser = null;
+    userProfileView.classList.add("hidden");
+    authForms.classList.remove("hidden"); // Show forms
+    notesGrid.innerHTML =
+      '<p style="padding:15px; color:#64748b;">Please login to load your cloud synced notes.</p>';
+    if (unsubscribeNotes) unsubscribeNotes();
+  }
+});
+
+// Handle Google Login (Now with proper error alerting)
+loginBtn.addEventListener("click", () => {
+  signInWithPopup(auth, provider).catch((err) => {
+    console.error("Google Auth Error:", err);
+    alert(
+      `Google Sign-In Failed: ${err.message}. \nMake sure Google Auth is enabled in your Firebase Console.`,
+    );
+  });
+});
+
+logoutBtn.addEventListener("click", () => signOut(auth));
 
 // App Structural UI bindings
 const sidebar = document.getElementById("sidebar");
@@ -158,32 +255,6 @@ colorPicker.addEventListener("input", (e) => {
 colorPicker.addEventListener("change", (e) => {
   localStorage.setItem("dnNotesNeonTheme", e.target.value);
 });
-
-/* --- Authentication Watcher --- */
-onAuthStateChanged(auth, (user) => {
-  if (user) {
-    currentUser = user;
-    loginBtn.classList.add("hidden");
-    userProfileView.classList.remove("hidden");
-    userAvatar.src = user.photoURL;
-    userNameText.innerText = user.displayName.split(" ")[0];
-
-    // Load Real-time, Cross-device Synchronized data
-    streamUserNotes();
-  } else {
-    currentUser = null;
-    userProfileView.classList.add("hidden");
-    loginBtn.classList.remove("hidden");
-    notesGrid.innerHTML =
-      '<p style="padding:15px; color:#64748b;">Please login to load your cloud synced notes.</p>';
-    if (unsubscribeNotes) unsubscribeNotes();
-  }
-});
-
-loginBtn.addEventListener("click", () =>
-  signInWithPopup(auth, provider).catch((err) => console.error(err)),
-);
-logoutBtn.addEventListener("click", () => signOut(auth));
 
 /* --- Sidebar Panel System --- */
 toggleBtn.addEventListener("click", () => sidebar.classList.toggle("open"));
