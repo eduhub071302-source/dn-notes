@@ -177,11 +177,20 @@ onAuthStateChanged(auth, (user) => {
 
       if (permission === "granted") {
         console.log("Notification permission granted.");
-        const currentToken = await getToken(messaging, { vapidKey: VAPID_KEY });
+
+        // 1. Explicitly register the FCM service worker with a relative path
+        const swRegistration = await navigator.serviceWorker.register(
+          "./firebase-messaging-sw.js",
+        );
+
+        // 2. Pass the registration directly into the getToken function
+        const currentToken = await getToken(messaging, {
+          vapidKey: VAPID_KEY,
+          serviceWorkerRegistration: swRegistration,
+        });
 
         if (currentToken) {
           console.log("SUCCESS! Your Device Token is:", currentToken);
-          // NEW: Save token to Firestore so the Cloud Function knows where to send the alarm
           const userRef = doc(db, "users", currentUser.uid);
           await setDoc(userRef, { fcmToken: currentToken }, { merge: true });
         } else {
