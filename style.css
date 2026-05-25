@@ -40,8 +40,13 @@ body {
   flex-direction: column;
   border-right: 1px solid var(--border-color);
   box-shadow: 2px 0 15px rgba(0, 0, 0, 0.5);
-  overflow-y: auto; /* <-- ADD THIS: Allows vertical scrolling on mobile */
-  scrollbar-width: thin; /* Optional: keeps the scrollbar slim */
+
+  /* --- Mobile & Landscape Scrolling Fixes --- */
+  overflow-y: auto;
+  overflow-x: hidden; /* Prevents horizontal wobble while scrolling */
+  scrollbar-width: thin;
+  max-height: 100vh; /* Strictly clamps the height to the visible screen */
+  -webkit-overflow-scrolling: touch; /* Enables buttery smooth momentum scrolling on iOS/Android */
 }
 
 #sidebar:not(.open) {
