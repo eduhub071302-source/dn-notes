@@ -1,6 +1,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import {
-  getFirestore,
+  initializeFirestore, // NEW
+  persistentLocalCache, // NEW
+  persistentMultipleTabManager, // NEW
   collection,
   addDoc,
   query,
@@ -8,10 +10,9 @@ import {
   onSnapshot,
   orderBy,
   serverTimestamp,
-  deleteDoc, // NEW
-  doc, // NEW
-  updateDoc, // NEW
-  enableIndexedDbPersistence,
+  deleteDoc,
+  doc,
+  updateDoc,
   setDoc,
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import {
@@ -40,20 +41,14 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const app = initializeApp(firebaseConfig);
 
-// NEW: Enable offline local storage.
+// NEW: Enable offline local storage using the modern v10 method.
 // This forces the app to load from device storage first, drastically reducing Firestore reads!
-enableIndexedDbPersistence(db).catch((err) => {
-  if (err.code == "failed-precondition") {
-    console.log(
-      "Multiple tabs open, persistence can only be enabled in one tab at a a time.",
-    );
-  } else if (err.code == "unimplemented") {
-    console.log(
-      "The current browser does not support all of the features required to enable persistence.",
-    );
-  }
+const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager(),
+  }),
 });
 
 // Request Notification Permission on load
@@ -178,10 +173,9 @@ onAuthStateChanged(auth, (user) => {
       if (permission === "granted") {
         console.log("Notification permission granted.");
 
-        // 1. Explicitly register the FCM service worker with a relative path
-        const swRegistration = await navigator.serviceWorker.register(
-          "./firebase-messaging-sw.js",
-        );
+        // 1. Explicitly register the single main service worker using the GitHub Pages path
+        const swRegistration =
+          await navigator.serviceWorker.register("/dn-notes/sw.js");
 
         // 2. Pass the registration directly into the getToken function
         const currentToken = await getToken(messaging, {
