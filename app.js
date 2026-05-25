@@ -223,15 +223,10 @@ onAuthStateChanged(auth, (user) => {
         requireInteraction: true,
       };
 
-      try {
-        // Forces Desktop PCs (Windows/Mac) to show a visual popup while app is open
-        new Notification(title, options);
-      } catch (err) {
-        // Fallback for Android/Mobile which strictly requires the Service Worker
-        navigator.serviceWorker.ready.then((registration) => {
-          registration.showNotification(title, options);
-        });
-      }
+      // Universally forces the Service Worker to handle the display
+      navigator.serviceWorker.ready.then((registration) => {
+        registration.showNotification(title, options);
+      });
     }
   });
 });
@@ -704,14 +699,8 @@ function triggerAlarm(note) {
       tag: note.id, // Prevents spamming multiple notifications for the same task
     };
 
-    try {
-      // Forces Desktop PCs (Windows/Mac) to show a visual popup while app is open
-      new Notification(title, options);
-    } catch (err) {
-      // Fallback for Android/Mobile which strictly requires the Service Worker
-      navigator.serviceWorker.ready.then((registration) => {
-        registration.showNotification(title, options);
-      });
-    }
+    navigator.serviceWorker.ready.then((registration) => {
+      registration.showNotification(title, options);
+    });
   }
 }
