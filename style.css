@@ -440,3 +440,95 @@ input[type="time"]:focus {
   box-shadow: var(--primary-glow);
   text-shadow: 0 0 4px var(--primary);
 }
+
+/* --- New Action Buttons inside Modals --- */
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 15px;
+  margin-top: 25px;
+  padding-top: 15px;
+  border-top: 1px solid var(--border-color);
+}
+.danger-btn {
+  background: transparent;
+  color: #ef4444;
+  border: 1px solid #ef4444;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s ease;
+}
+.danger-btn:hover {
+  background: #ef4444;
+  color: white;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+}
+.success-btn {
+  background: transparent;
+  color: #10b981;
+  border: 1px solid #10b981;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s ease;
+}
+.success-btn:hover {
+  background: #10b981;
+  color: white;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+}
+
+/* --- Secondary Tool Buttons --- */
+.secondary-btn {
+  background: var(--card-bg);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+.secondary-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* --- Multi Time Picker Specifics --- */
+.time-pickers-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.time-picker-wrapper {
+  display: flex;
+  align-items: center;
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  padding-right: 5px;
+  border-radius: 4px;
+}
+.time-picker-wrapper input {
+  border: none;
+  background: transparent;
+}
+
+/* --- Done State Card Styles --- */
+.done-card {
+  border-left-color: #10b981 !important;
+  background-color: rgba(16, 185, 129, 0.05);
+}
+.done-badge {
+  font-size: 10px;
+  background: #10b981;
+  color: #000;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-weight: bold;
+  float: right;
+  margin-top: -5px;
+  margin-right: -5px;
+}
