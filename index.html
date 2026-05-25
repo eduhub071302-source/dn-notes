@@ -229,8 +229,13 @@
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker
-          .register("./firebase-messaging-sw.js")
-          .then(() => console.log("Service Worker Active"));
+          .register("/dn-notes/firebase-messaging-sw.js", {
+            scope: "/dn-notes/",
+          })
+          .then(() => console.log("Service Worker Active"))
+          .catch((err) =>
+            console.error("Service Worker failed to register:", err),
+          );
       }
     </script>
   </body>
