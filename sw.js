@@ -1,10 +1,10 @@
-const CACHE_NAME = "dn-notes-cache-v2"; // Bumped version
+const CACHE_NAME = "dn-notes-cache-v3"; // ⚠️ Notice the version bump!
 const urlsToCache = [
-  "./",
-  "./index.html",
-  "./style.css",
-  "./app.js",
-  "./manifest.json",
+  "/dn-notes/",
+  "/dn-notes/index.html",
+  "/dn-notes/style.css",
+  "/dn-notes/app.js",
+  "/dn-notes/manifest.json",
 ];
 
 self.addEventListener("install", (event) => {
@@ -23,20 +23,19 @@ self.addEventListener("fetch", (event) => {
   );
 });
 
-// --- NEW: Handle Notification Clicks ---
+// Handle Notification Clicks
 self.addEventListener("notificationclick", (event) => {
-  event.notification.close(); // Close the notification
+  event.notification.close();
 
-  // Check if the app is already open in a tab, and focus it. If not, open a new tab.
   event.waitUntil(
     clients.matchAll({ type: "window" }).then((windowClients) => {
       for (let client of windowClients) {
-        if (client.url.includes("/") && "focus" in client) {
+        if (client.url.includes("/dn-notes/") && "focus" in client) {
           return client.focus();
         }
       }
       if (clients.openWindow) {
-        return clients.openWindow("/");
+        return clients.openWindow("/dn-notes/");
       }
     }),
   );
