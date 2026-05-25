@@ -404,51 +404,74 @@ colorPicker.addEventListener("change", (e) =>
 );
 
 /* --- Sidebar & Document Editor UI --- */
-/* --- Sidebar & Document Editor UI --- */
 toggleBtn.addEventListener("click", () => sidebar.classList.toggle("open"));
 
 const fontSelect = document.getElementById("font-family");
 const colorSelect = document.getElementById("font-color");
+const applyColorBtn = document.getElementById("apply-color-btn"); // NEW
 const btnBold = document.getElementById("btn-bold");
 const btnItalic = document.getElementById("btn-italic");
 const btnUnderline = document.getElementById("btn-underline");
 
-// Dropdowns steal focus natively, so we force focus back to the editor after selection
+// 1. Strict Lock State Tracker
+// This forces the buttons to act as permanent ON/OFF switches
+const lockedStyles = {
+  bold: false,
+  italic: false,
+  underline: false,
+};
+
+// Font Selection
 fontSelect.addEventListener("change", function () {
   document.execCommand("fontName", false, this.value);
-  editor.focus(); 
-});
-colorSelect.addEventListener("input", function () {
-  document.execCommand("foreColor", false, this.value);
   editor.focus();
 });
 
-// Formatting Buttons: Prevent focus loss via 'mousedown' + preventDefault()
+// NEW: Font Color is now applied via the specific Save button instead of instantly
+applyColorBtn.addEventListener("mousedown", function (e) {
+  e.preventDefault(); // Prevents the editor from losing your cursor position
+  document.execCommand("foreColor", false, colorSelect.value);
+});
+
+// 2. Hard Toggle Formatting Buttons
 [
-  { btn: btnBold, cmd: 'bold' },
-  { btn: btnItalic, cmd: 'italic' },
-  { btn: btnUnderline, cmd: 'underline' }
+  { btn: btnBold, cmd: "bold" },
+  { btn: btnItalic, cmd: "italic" },
+  { btn: btnUnderline, cmd: "underline" },
 ].forEach(({ btn, cmd }) => {
   btn.addEventListener("mousedown", (e) => {
-    e.preventDefault(); // CRITICAL: Stops the browser from moving the cursor to the button
+    e.preventDefault(); // CRITICAL: Stops the browser from moving the cursor out of the editor
+
+    // Toggle our manual lock state (ON -> OFF -> ON)
+    lockedStyles[cmd] = !lockedStyles[cmd];
+
+    // Visually lock the button down or pop it back up
+    btn.classList.toggle("active-tool", lockedStyles[cmd]);
+
+    // Apply the style immediately to anything currently highlighted
     document.execCommand(cmd, false, null);
-    updateToolbarState(); // Visually update the button to look pressed
   });
 });
 
-// Function to light up buttons if the cursor is on Bold/Italic/Underline text
-function updateToolbarState() {
-  btnBold.classList.toggle("active-tool", document.queryCommandState("bold"));
-  btnItalic.classList.toggle("active-tool", document.queryCommandState("italic"));
-  btnUnderline.classList.toggle("active-tool", document.queryCommandState("underline"));
-}
+// 3. The Enforcer Engine
+// This aggressively corrects the browser's formatting right before you type a letter,
+// guaranteeing the text matches whatever buttons you currently have turned "ON".
+editor.addEventListener("keydown", (e) => {
+  // Ignore system commands (Shift, Enter, Backspace, Arrows, Ctrl+C) to prevent destructive jumping
+  if (e.ctrlKey || e.metaKey || e.altKey || e.key.length > 1) return;
 
-// Check the style state whenever the user types or clicks inside the editor
-editor.addEventListener("keyup", updateToolbarState);
-editor.addEventListener("mouseup", updateToolbarState);
-editor.addEventListener("focus", updateToolbarState);
+  // If the browser natively turned off Bold, but your Bold button is ON (or vice versa), force it back!
+  if (lockedStyles.bold !== document.queryCommandState("bold")) {
+    document.execCommand("bold", false, null);
+  }
+  if (lockedStyles.italic !== document.queryCommandState("italic")) {
+    document.execCommand("italic", false, null);
+  }
+  if (lockedStyles.underline !== document.queryCommandState("underline")) {
+    document.execCommand("underline", false, null);
+  }
+});
 
-/* --- Multi-device Live Data Stream --- */
 function streamUserNotes() {
   if (!currentUser) return;
   if (unsubscribeNotes) unsubscribeNotes();
