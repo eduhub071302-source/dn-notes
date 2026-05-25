@@ -326,32 +326,46 @@ function streamUserNotes() {
     orderBy("createdAt", "desc"),
   );
 
-  unsubscribeNotes = onSnapshot(notesQuery, (snapshot) => {
-    notesGrid.innerHTML = "";
-    if (snapshot.empty) {
-      notesGrid.innerHTML =
-        '<p style="color:#64748b; font-size:14px; padding:10px;">No notes found under this category.</p>';
-      return;
-    }
+  unsubscribeNotes = onSnapshot(
+    notesQuery,
+    (snapshot) => {
+      notesGrid.innerHTML = "";
+      if (snapshot.empty) {
+        notesGrid.innerHTML =
+          '<p style="color:#64748b; font-size:14px; padding:10px;">No notes found under this category.</p>';
+        return;
+      }
 
-    snapshot.forEach((docSnap) => {
-      const data = docSnap.data();
-      const card = document.createElement("div");
-      card.className = `note-card ${data.isDone ? "done-card" : ""}`;
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        const card = document.createElement("div");
+        card.className = `note-card ${data.isDone ? "done-card" : ""}`;
 
-      let badge = data.isDone ? `<span class="done-badge">✓ DONE</span>` : "";
+        let badge = data.isDone ? `<span class="done-badge">✓ DONE</span>` : "";
 
-      card.innerHTML = `
-        ${badge}
-        <h4 style="${data.isDone ? "text-decoration: line-through; opacity: 0.7;" : ""}">${data.topic || "Untitled Note"}</h4>
-        <p style="font-size:12px; color:#64748b;">Click to Open</p>
-      `;
+        card.innerHTML = `
+          ${badge}
+          <h4 style="${data.isDone ? "text-decoration: line-through; opacity: 0.7;" : ""}">${data.topic || "Untitled Note"}</h4>
+          <p style="font-size:12px; color:#64748b;">Click to Open</p>
+        `;
 
-      // Pass the Document ID to the modal so we can delete or update it later
-      card.addEventListener("click", () => openNoteModal(docSnap.id, data));
-      notesGrid.appendChild(card);
-    });
-  });
+        card.addEventListener("click", () => openNoteModal(docSnap.id, data));
+        notesGrid.appendChild(card);
+      });
+    },
+    // NEW: Error handler added here!
+    (error) => {
+      console.error("Firestore Stream Error:", error);
+      if (error.message.includes("requires an index")) {
+        notesGrid.innerHTML = `
+          <div style="padding:15px; border: 1px solid #ef4444; border-radius: 8px; background: rgba(239, 68, 68, 0.1);">
+            <h4 style="color:#ef4444; margin-top:0;">⚠️ Missing Database Index</h4>
+            <p style="font-size:13px; color:#e2e8f0;">Open your browser's Developer Tools (Press F12), go to the <b>Console</b> tab, and click the direct Firebase link to generate your missing index.</p>
+          </div>
+        `;
+      }
+    },
+  );
 }
 
 /* --- Save Note Infrastructure --- */
@@ -373,7 +387,7 @@ saveBtn.addEventListener("click", async () => {
     topic: topic,
     content: content,
     isDone: false,
-    createdAt: serverTimestamp(),
+    createdAt: Date.now(),
     scheduling: {
       times: reminderTimes,
       type: durationSelect.value,
