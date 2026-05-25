@@ -24,7 +24,38 @@
 
       <!-- Google Auth Section -->
       <div class="auth-container">
-        <button id="login-btn" class="google-btn">Continue with Google</button>
+        <div id="auth-forms" class="auth-forms">
+          <input
+            type="email"
+            id="email-input"
+            placeholder="Email"
+            class="auth-input"
+          />
+          <input
+            type="password"
+            id="password-input"
+            placeholder="Password"
+            class="auth-input"
+          />
+          <input
+            type="password"
+            id="confirm-password-input"
+            placeholder="Confirm Password"
+            class="auth-input hidden"
+          />
+
+          <button id="email-action-btn" class="primary-btn">Sign In</button>
+          <button id="toggle-auth-mode-btn" class="text-btn">
+            Need an account? Sign Up
+          </button>
+
+          <hr class="auth-divider" />
+
+          <button id="login-btn" class="google-btn">
+            Continue with Google
+          </button>
+        </div>
+
         <div id="user-profile" class="user-profile hidden">
           <img id="user-avatar" src="" alt="Avatar" />
           <span id="user-name"></span>
